@@ -1,8 +1,8 @@
-import os
 import orjson
-from web3 import Web3
 from eth_account import Account
-from src.checker import *
+from web3 import Web3
+
+from src.checker import get_data_staked, get_risk
 from src.utils import get_env_variable
 
 
@@ -14,9 +14,7 @@ class AgentWalletSync:
         self.rebalancer_delegation = get_env_variable(
             "REBALANCER_DELEGATION_ADDRESS", "0x6D5f91cA52bdD5d3DAAb52D91fBfd7e7D253d64A"
         )
-        self.operator_private_key = get_env_variable(
-            "OPERATOR_PRIVATE_KEY", ""
-        )
+        self.operator_private_key = get_env_variable("OPERATOR_PRIVATE_KEY", "")
 
     def _get_operator_account(self):
         """Get operator account from private key"""
@@ -31,13 +29,13 @@ class AgentWalletSync:
         """
         operator_account = self._get_operator_account()
         delegation_abi = self._read_abi("./abi/RebalancerDelegation.json")
-        
+
         return self._send_contract_tx(
             operator_account,
             self.rebalancer_delegation,
             delegation_abi,
             "rebalance",
-            user_address,  # Use user_address directly
+            user_address,
         )
 
     def get_users_with_auto_rebalance(self):
@@ -72,7 +70,7 @@ class AgentWalletSync:
         return receipt["transactionHash"].hex()
 
     def _read_abi(self, abi_path):
-        with open(abi_path, "r") as file:
+        with open(abi_path) as file:
             return orjson.loads(file.read())
 
 
@@ -93,7 +91,6 @@ def handle_low_risk(user_address, user_staked):
     """Handle low risk users - rebalance via delegation contract"""
     try:
         agent = AgentWalletSync()
-        # Operator rebalances user's funds (ProtocolSelector auto-selects best protocol)
         agent.rebalance_user(user_address)
         print(f"Successfully rebalanced low-risk user: {user_address}")
     except Exception as e:
@@ -104,7 +101,6 @@ def handle_high_risk(user_address, user_staked):
     """Handle high/medium risk users - rebalance via delegation contract"""
     try:
         agent = AgentWalletSync()
-        # Operator rebalances user's funds (ProtocolSelector auto-selects best protocol)
         agent.rebalance_user(user_address)
         print(f"Successfully rebalanced high-risk user: {user_address}")
     except Exception as e:
@@ -119,10 +115,10 @@ def runner():
     """
     agent = AgentWalletSync()
     user_addresses = agent.get_users_with_auto_rebalance()
-    
+
     if not user_addresses:
         print("No users with auto-rebalance enabled (tracking not implemented yet)")
         return
-    
+
     for address in user_addresses:
         handle_user(address)

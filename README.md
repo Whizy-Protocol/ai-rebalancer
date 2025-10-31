@@ -1,23 +1,40 @@
 # Whizy Protocol - AI Rebalancer Backend
 
-Backend service for Whizy Protocol that provides AI-powered risk assessment, knowledge base queries, and automated yield optimization through delegated rebalancing.
+Backend service for Whizy Protocol that provides AI-powered risk assessment, knowledge base queries, and automated yield optimization through delegated rebalancing on the Hedera network.
 
 ## Overview
 
 The Whizy Rebalancer is a FastAPI-based backend that:
-- Assesses user risk profiles using AI
-- Provides protocol knowledge and recommendations
-- Manages non-custodial user wallets
-- Executes automated rebalancing via operator delegation
-- Integrates with smart contracts on Hedera network
+- 🤖 Assesses user risk profiles using OpenAI GPT-4o-mini
+- 📚 Provides protocol knowledge and AI-powered recommendations using RAG (Retrieval-Augmented Generation)
+- 💼 Manages non-custodial user wallets (users control their own keys)
+- 🔄 Executes automated rebalancing via operator delegation
+- ⛓️ Integrates with smart contracts on Hedera network
+- 🧪 Comprehensive test suite with unit and integration tests
 
 ## Architecture
 
 ### Core Components
 
 #### 1. AI Agents (`src/agent.py`)
-- **RiskClassifierAgent**: Analyzes user responses to determine risk profile (low/medium/high)
-- **KnowledgeAgent**: Provides information about DeFi protocols and strategies
+
+**RiskClassifierAgent**
+- Analyzes user responses using OpenAI GPT-4o-mini (temperature: 0.1 for consistency)
+- Classifies users into risk profiles: low/medium/high
+- Updates risk profile in wallet data automatically
+- Uses structured JSON output for reliable parsing
+- Risk classification framework:
+  - **Low**: Conservative, stablecoins only, 2-8% APY target, max 5% drawdown
+  - **Medium**: Balanced, major crypto + stablecoins, 4-12% APY target, max 10-20% drawdown
+  - **High**: Aggressive, any asset, 8-20%+ APY target, max 30%+ drawdown
+
+**KnowledgeAgent**
+- RAG-based system using FAISS vector store with OpenAI embeddings
+- Fetches real-time protocol data from knowledge API
+- Provides context-aware answers based on user's risk profile
+- Uses RetrievalQA chain for accurate information retrieval
+- Risk-specific prompts from `models/prompt.json`
+- Returns strategy recommendations with expected APY ranges and risk factors
 
 #### 2. Wallet Management (`src/wallet.py`)
 - Reads on-chain data for user wallets
@@ -66,7 +83,7 @@ Backend Operator Wallet
 ### Prerequisites
 
 ```bash
-# Python 3.9+
+# Python 3.10+
 python3 --version
 
 # Install dependencies
@@ -81,8 +98,11 @@ Create `.env` file:
 # OpenAI API for AI agents
 OPENAI_API_KEY=your_openai_api_key_here
 
-# Protocol data source
-URL_KNOWLEDGE=
+# Protocol data source (API endpoint that returns protocol data)
+URL_KNOWLEDGE=https://your-api-endpoint.com/protocols
+
+# DeFiLlama API (for scraping yield data - optional)
+DEFILLAMA_API=https://yields.llama.fi/pools
 
 # Hedera Network
 RPC_URL=https://testnet.hashio.io/api
@@ -374,11 +394,104 @@ User → Backend GET /action/get-user-config (check balance)
 
 ## Testing
 
+The project includes comprehensive test coverage with unit tests and integration tests.
+
+### Test Structure
+
+```
+test/
+├── test_agents.py         # AI agent tests (mocked)
+├── test_api.py            # API endpoint tests
+├── test_rules.py          # Rebalancing logic tests
+├── test_wallet.py         # Wallet operations tests
+├── test_scrape.py         # Data scraping tests
+├── test_integration.py    # Real API integration tests
+└── README_INTEGRATION.md  # Integration test documentation
+```
+
+### Running Tests
+
+```bash
+# Run unit tests only (fast, mocked)
+make test
+
+# Run integration tests (requires API keys)
+make test-integration
+
+# Run all tests
+make test-all
+
+# Run with coverage report
+make test-coverage
+
+# Clean cache files
+make clean
+```
+
+### Code Quality
+
+```bash
+# Run linter
+make lint
+
+# Auto-fix linting issues
+make lint-fix
+
+# Format code
+make format
+
+# Run both linter and formatter
+make check
+```
+
+### Integration Tests
+
+Integration tests require real API keys and make actual API calls:
+
+```bash
+# Set environment variables
+export OPENAI_API_KEY="your-key"
+export URL_KNOWLEDGE="your-api-url"
+
+# Run integration tests
+make test-integration
+```
+
+**Integration tests include:**
+- Real OpenAI API calls for risk classification
+- Real knowledge agent queries with RAG
+- Strategy recommendation generation
+- Data fetching from external APIs
+
 ### API Testing
 
 ```bash
 # Health check
 curl http://localhost:8000/health
+
+# Risk profile assessment
+curl -X POST http://localhost:8000/generate-risk-profile \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_address": "0x123...",
+    "data": "I prefer stable returns with no volatility"
+  }'
+
+# Get strategy recommendation
+curl -X POST http://localhost:8000/get-strategy-recommendation \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_address": "0x123...",
+    "data": "I want maximum yield"
+  }'
+
+# Query knowledge agent
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What are the best stablecoin protocols?",
+    "thread_id": "optional-thread-id"
+  }'
 
 # Get user balance
 curl -X POST http://localhost:8000/action/get-user-balance \
@@ -389,13 +502,6 @@ curl -X POST http://localhost:8000/action/get-user-balance \
 curl -X POST http://localhost:8000/action/get-user-config \
   -H "Content-Type: application/json" \
   -d '{"user_address": "0x123..."}'
-```
-
-### Unit Tests
-
-```bash
-# Run tests (if available)
-pytest test/
 ```
 
 ## Monitoring & Logging
@@ -432,18 +538,27 @@ The service logs all operations:
 ## Development Roadmap
 
 ### Current Features
-- ✅ AI-powered risk assessment
-- ✅ Delegated auto-rebalancing
+- ✅ AI-powered risk assessment using OpenAI GPT-4o-mini
+- ✅ RAG-based knowledge agent with FAISS vector store
+- ✅ Risk-specific strategy recommendations
+- ✅ Delegated auto-rebalancing (non-custodial)
 - ✅ Multi-protocol support (Aave, Morpho, Compound)
-- ✅ RESTful API
+- ✅ RESTful API with FastAPI
+- ✅ Comprehensive test suite (unit + integration)
+- ✅ Code quality tools (Ruff linting + formatting)
+- ✅ Automated testing with Make commands
 
 ### Future Enhancements
 - 🔄 WebSocket support for real-time updates
+- 🔄 Event listening for on-chain auto-rebalance triggers
+- 🔄 Database integration for user tracking (currently not implemented)
 - 🔄 Advanced risk models with ML
 - 🔄 Multi-token support (beyond USDC)
 - 🔄 Historical performance analytics
 - 🔄 Gas optimization strategies
 - 🔄 Frontend dashboard
+- 🔄 Multi-chain support
+- 🔄 More DeFi protocol integrations
 
 ## Contributing
 

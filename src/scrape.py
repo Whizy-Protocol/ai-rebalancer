@@ -1,4 +1,5 @@
 import os
+
 import orjson
 import requests
 from dotenv import load_dotenv
@@ -13,15 +14,14 @@ class YieldDataFetcher:
         self.url = url
         self.data = None
         self.filtered_data = None
+        self.allowed_chains = ["Ethereum"]
 
     def fetch_data(self):
         response = requests.get(self.url)
         if response.status_code == 200:
             self.data = orjson.loads(response.content)
         else:
-            raise Exception(
-                f"Failed to fetch data, status code: {response.status_code}"
-            )
+            raise Exception(f"Failed to fetch data, status code: {response.status_code}")
 
     def filter_data(self):
         if self.data is None:
@@ -37,17 +37,16 @@ class YieldDataFetcher:
                 "stablecoin": item["stablecoin"],
             }
             for item in self.data["data"]
-            if item["chain"] == "Hedera"
-            and item["apyBase"] is not None
-            and item["apyBase"] != 0
-            and "-" not in item["symbol"]
+            if (
+                (not self.allowed_chains or item["chain"] in self.allowed_chains)
+                and item.get("apyBase") not in (None, 0)
+                and "-" not in item.get("symbol", "")
+            )
         ]
 
     def save_data(self, filename="result.json"):
         if self.filtered_data is None:
-            raise ValueError(
-                "Data is not filtered yet. Please call filter_data() first."
-            )
+            raise ValueError("Data is not filtered yet. Please call filter_data() first.")
 
         with open(filename, "wb") as f:
             f.write(orjson.dumps(self.filtered_data, option=orjson.OPT_INDENT_2))

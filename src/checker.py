@@ -1,7 +1,7 @@
 import orjson
-import requests
-from web3 import Web3
 from eth_account import Account
+from web3 import Web3
+
 from src.utils import get_env_variable
 
 
@@ -31,7 +31,7 @@ def get_data_staked(user_address):
         "PROTOCOL_SELECTOR_ADDRESS", "0x0371aB2d90A436C8E5c5B6aF8835F46A6Ce884Ba"
     )
 
-    with open("abi/ProtocolSelector.json", "r") as file:
+    with open("abi/ProtocolSelector.json") as file:
         selector_abi = orjson.loads(file.read())
 
     usdc_address = "0x8bc6E87bE188B7964E48f37d7A2c144416a995eE"

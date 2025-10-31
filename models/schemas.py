@@ -1,4 +1,3 @@
-from typing import Optional
 from pydantic import BaseModel
 
 
@@ -9,7 +8,7 @@ class QueryRequestClassifier(BaseModel):
 
 class QueryRequest(BaseModel):
     query: str
-    thread_id: Optional[str] = None
+    thread_id: str | None = None
 
 
 class QueryResponse(BaseModel):

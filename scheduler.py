@@ -1,7 +1,8 @@
-import schedule
 import time
-from datetime import datetime
+
 import pytz
+import schedule
+
 from src.rules import runner
 
 utc = pytz.utc

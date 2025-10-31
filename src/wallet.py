@@ -1,5 +1,6 @@
 import orjson
 from web3 import Web3
+
 from src.utils import get_env_variable
 
 
@@ -24,24 +25,21 @@ class AgentWallet:
         """
         Get user's delegation configuration from on-chain
         User address is the actual wallet address (e.g., from MetaMask)
-        
+
         Returns:
             enabled: bool - Whether auto-rebalancing is enabled
             risk_profile: int - Risk profile (1=low, 2=medium, 3=high)
             deposited_amount: float - Amount deposited in USDC
         """
         delegation_abi = await self._read_abi("./abi/RebalancerDelegation.json")
-        contract = self.w3.eth.contract(
-            address=self.rebalancer_delegation, abi=delegation_abi
-        )
+        contract = self.w3.eth.contract(address=self.rebalancer_delegation, abi=delegation_abi)
 
-        # Use user_address directly - it's their wallet address
         config = contract.functions.userConfigs(user_address).call()
 
         return {
             "enabled": config[0],
             "risk_profile": config[1],
-            "deposited_amount": config[2] / (10**6),  # Convert back to USDC
+            "deposited_amount": config[2] / (10**6),
         }
 
     async def get_user_balance(self, user_address):
@@ -52,8 +50,8 @@ class AgentWallet:
         contract = self.w3.eth.contract(address=self.usdc_address, abi=erc20_abi)
 
         balance = contract.functions.balanceOf(user_address).call()
-        return balance / (10**6)  # Convert to USDC
+        return balance / (10**6)
 
     async def _read_abi(self, abi_path):
-        with open(abi_path, "r") as file:
+        with open(abi_path) as file:
             return orjson.loads(file.read())

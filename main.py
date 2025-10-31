@@ -1,17 +1,17 @@
-import time
+import asyncio
 import json
+import time
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Body
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-import asyncio
+from models.schemas import QueryRequest, QueryRequestClassifier, QueryUserWallet
 from src.agent import KnowledgeAgent, RiskClassifierAgent
-from src.wallet import AgentWallet
 from src.utils import get_env_variable
-from models.schemas import *
+from src.wallet import AgentWallet
 
 load_dotenv()
 
@@ -60,7 +60,7 @@ async def assess_risk(request: QueryRequestClassifier):
 
         return JSONResponse(content=parsed_response)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/query")
@@ -72,15 +72,11 @@ async def query_agent_sync(request: QueryRequest):
         start_time = time.time()
 
         response = await asyncio.wait_for(
-            knowledge_agent.process_query(
-                query=request.query, thread_id=request.thread_id
-            ),
+            knowledge_agent.process_query(query=request.query, thread_id=request.thread_id),
             timeout=30.0,
         )
 
-        parsed_response = (
-            json.loads(response) if isinstance(response, str) else response
-        )
+        parsed_response = json.loads(response) if isinstance(response, str) else response
         formatted_response = {"id_project": str(parsed_response.get("id_project", ""))}
         processing_time = time.time() - start_time
 
@@ -93,9 +89,7 @@ async def query_agent_sync(request: QueryRequest):
         return JSONResponse(content=response_json)
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Query processing failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Query processing failed: {e!s}") from e
 
 
 @app.post("/action/get-user-balance")
@@ -119,22 +113,17 @@ async def get_strategy_recommendation(request: QueryRequestClassifier):
     Returns detailed strategy with expected APY, protocols, and risk factors.
     """
     try:
-        # First get risk profile if not already classified
         risk_response = await risk_classifier_agent.process_query(
             query=request.data, user_address=request.user_address
         )
         risk_data = json.loads(risk_response)
         risk_level = risk_data.get("risk", "medium")
-        
-        # Get strategy recommendation based on risk level
+
         strategy = await knowledge_agent.get_strategy_recommendation(risk_level)
-        
-        return JSONResponse(content={
-            "risk_profile": risk_level,
-            "strategy": strategy
-        })
+
+        return JSONResponse(content={"risk_profile": risk_level, "strategy": strategy})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/health")

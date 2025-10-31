@@ -45,10 +45,10 @@ async def test_real_knowledge_agent_fetch(knowledge_agent):
     assert len(knowledge_agent.knowledge_data) > 0
 
     first_item = knowledge_agent.knowledge_data[0]
-    assert "idProtocol" in first_item
-    assert "chain" in first_item
-    assert "nameToken" in first_item
-    assert "apy" in first_item
+    assert "id" in first_item
+    assert "name" in first_item
+    assert "baseApy" in first_item
+    assert "isActive" in first_item
 
 
 @pytest.mark.integration

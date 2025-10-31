@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from langchain.chains import RetrievalQA
 from langchain.docstore.document import Document
 from langchain.tools import Tool
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
@@ -56,8 +56,8 @@ class KnowledgeAgent:
         df = pd.DataFrame(self.knowledge_data)
         docs = [
             Document(
-                page_content=f"IdProject: {row['idProtocol']}, Chain: {row['chain']}, Symbol: {row['nameToken']}, TVL: {row['tvl']}, APY: {row['apy']}, Stablecoin: {row['stablecoin']}",
-                metadata={"symbol": row["nameToken"], "protocol": row["idProtocol"]},
+                page_content=f"Protocol ID: {row['id']}, Name: {row['name']}, Base APY: {row['baseApy']}, Active: {row['isActive']}",
+                metadata={"protocol_id": row["id"], "name": row["name"], "apy": row["baseApy"]},
             )
             for _, row in df.iterrows()
         ]
@@ -72,7 +72,7 @@ class KnowledgeAgent:
         qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
         qa_tool = Tool(
             name="KnowledgeBaseQA",
-            func=lambda query: qa_chain.run(query),
+            func=lambda query: qa_chain.invoke({"query": query})["result"],
             description="Search DeFi protocols for TVL, APY, risk levels, and token information. Returns data about Aave, Compound, Morpho and other protocols.",
         )
 
@@ -220,7 +220,11 @@ class RiskClassifierAgent:
 
     def _update_risk_profile(self, risk_profile: str, user_address: str):
         with open(self.file_path, "rb") as file:
-            wallet_data = orjson.loads(file.read())
+            content = file.read()
+            if isinstance(content, bytes):
+                wallet_data = orjson.loads(content)
+            else:
+                wallet_data = orjson.loads(content) if content else []
 
         for entry in wallet_data:
             if entry["user_address"] == user_address:

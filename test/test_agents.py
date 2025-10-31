@@ -67,20 +67,24 @@ async def test_knowledge_agent_create_retriever(knowledge_agent):
     """Test creating FAISS retriever from knowledge data"""
     knowledge_agent.knowledge_data = [
         {
-            "idProtocol": "aave-v3",
+            "id": "aave-v3",
+            "name": "Aave V3",
             "chain": "ethereum",
-            "nameToken": "USDC",
+            "tokenSymbol": "USDC",
             "tvl": 1000000000,
-            "apy": 12.4,
-            "stablecoin": True,
+            "baseApy": 12.4,
+            "isStablecoin": True,
+            "isActive": True,
         },
         {
-            "idProtocol": "compound-v3",
+            "id": "compound-v3",
+            "name": "Compound V3",
             "chain": "ethereum",
-            "nameToken": "USDC",
+            "tokenSymbol": "USDC",
             "tvl": 500000000,
-            "apy": 4.8,
-            "stablecoin": True,
+            "baseApy": 4.8,
+            "isStablecoin": True,
+            "isActive": True,
         },
     ]
 

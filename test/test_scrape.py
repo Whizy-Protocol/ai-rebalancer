@@ -107,19 +107,22 @@ def test_filter_data(mock_api_response):
     fetcher.filter_data()
 
     assert fetcher.filtered_data is not None
-    assert len(fetcher.filtered_data) == 2
+    assert len(fetcher.filtered_data) == 3  # 2 Hedera + 1 Ethereum
 
-    # Check that only Hedera chain items with valid APY and no hyphen in symbol are included
+    # Check that only Hedera and Ethereum chain items with valid APY and no hyphen in symbol are included
     for item in fetcher.filtered_data:
-        assert item["chain"] == "Hedera"
+        assert item["chain"] in ["Hedera", "Ethereum"]
         assert item["apyBase"] is not None
         assert item["apyBase"] != 0
         assert "-" not in item["symbol"]
 
     # Verify the correct items were filtered
     symbols = [item["symbol"] for item in fetcher.filtered_data]
-    assert "USDC" in symbols
-    assert "HBAR" in symbols
+    chains = [item["chain"] for item in fetcher.filtered_data]
+    assert "USDC" in symbols  # Both Hedera and Ethereum have USDC
+    assert "HBAR" in symbols  # Hedera
+    assert "Hedera" in chains
+    assert "Ethereum" in chains
     assert "USDC-HBAR" not in symbols  # Has hyphen
     assert "DAI" not in symbols  # apyBase is None
     assert "USDT" not in symbols  # apyBase is 0
@@ -147,8 +150,10 @@ def test_save_data(mock_api_response, tmp_path):
     with open(output_file, "rb") as f:
         saved_data = orjson.loads(f.read())
 
-    assert len(saved_data) == 2
-    assert saved_data[0]["chain"] == "Hedera"
+    assert len(saved_data) == 3  # 2 Hedera + 1 Ethereum
+    chains = [item["chain"] for item in saved_data]
+    assert "Hedera" in chains
+    assert "Ethereum" in chains
 
 
 def test_save_data_without_filter():
@@ -179,8 +184,11 @@ def test_full_workflow(mock_api_response, tmp_path):
     with open(output_file, "rb") as f:
         result = orjson.loads(f.read())
 
-    assert len(result) == 2
-    assert all(item["chain"] == "Hedera" for item in result)
+    assert len(result) == 3  # 2 Hedera + 1 Ethereum
+    chains = [item["chain"] for item in result]
+    assert "Hedera" in chains
+    assert "Ethereum" in chains
+    assert all(item["chain"] in ["Hedera", "Ethereum"] for item in result)
 
 
 @pytest.mark.integration

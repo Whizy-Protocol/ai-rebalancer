@@ -14,7 +14,7 @@ class YieldDataFetcher:
         self.url = url
         self.data = None
         self.filtered_data = None
-        self.allowed_chains = ["Ethereum"]
+        self.allowed_chains = ["Hedera", "Ethereum"]
 
     def fetch_data(self):
         response = requests.get(self.url)

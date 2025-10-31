@@ -2,7 +2,7 @@ import orjson
 import requests
 from web3 import Web3
 from eth_account import Account
-from utils import get_env_variable
+from src.utils import get_env_variable
 
 
 def _load_existing_data():

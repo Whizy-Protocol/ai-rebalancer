@@ -1,5 +1,6 @@
 import time
 import json
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Body
@@ -14,10 +15,26 @@ from models.schemas import *
 
 load_dotenv()
 
+URL_KNOWLEDGE = get_env_variable("URL_KNOWLEDGE", "")
+
+risk_classifier_agent = RiskClassifierAgent()
+knowledge_agent = KnowledgeAgent(url=URL_KNOWLEDGE)
+agent_wallet = AgentWallet()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize agents at startup."""
+    await risk_classifier_agent.initialize()
+    await knowledge_agent.initialize()
+    yield
+
+
 app = FastAPI(
     title="Agent API",
     description="API for interacting with Agent with Knowledge Hedera",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -27,19 +44,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-URL_KNOWLEDGE = get_env_variable("URL_KNOWLEDGE", "")
-
-risk_classifier_agent = RiskClassifierAgent()
-knowledge_agent = KnowledgeAgent(url=URL_KNOWLEDGE)
-agent_wallet = AgentWallet()
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize agent when the API starts."""
-    await risk_classifier_agent.initialize()
-    await knowledge_agent.initialize()
 
 
 @app.post("/generate-risk-profile")
@@ -106,6 +110,31 @@ async def get_user_config(request: QueryUserWallet):
     """Get user's delegation configuration"""
     response = await agent_wallet.get_user_config(request.user_address)
     return JSONResponse(content=response)
+
+
+@app.post("/get-strategy-recommendation")
+async def get_strategy_recommendation(request: QueryRequestClassifier):
+    """
+    Get AI-powered yield strategy recommendation based on user's risk profile.
+    Returns detailed strategy with expected APY, protocols, and risk factors.
+    """
+    try:
+        # First get risk profile if not already classified
+        risk_response = await risk_classifier_agent.process_query(
+            query=request.data, user_address=request.user_address
+        )
+        risk_data = json.loads(risk_response)
+        risk_level = risk_data.get("risk", "medium")
+        
+        # Get strategy recommendation based on risk level
+        strategy = await knowledge_agent.get_strategy_recommendation(risk_level)
+        
+        return JSONResponse(content={
+            "risk_profile": risk_level,
+            "strategy": strategy
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/health")

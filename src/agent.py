@@ -23,6 +23,16 @@ class KnowledgeAgent:
         self.agent_executor = None
         self._lock = asyncio.Lock()
         self.knowledge_data = []
+        self.risk_prompts = self._load_risk_prompts()
+
+    def _load_risk_prompts(self):
+        """Load risk-based prompts from JSON file"""
+        try:
+            with open("./models/prompt.json", "r") as f:
+                return orjson.loads(f.read())
+        except Exception as e:
+            print(f"Warning: Could not load risk prompts: {e}")
+            return []
 
     async def fetch_knowledge(self):
         async with aiohttp.ClientSession() as session:
@@ -59,27 +69,70 @@ class KnowledgeAgent:
         )
 
     def _sync_initialize_agent(self, retriever):
-        llm = ChatOpenAI(model="gpt-4o-mini-2024-07-18")
+        llm = ChatOpenAI(model="gpt-4o-mini-2024-07-18", temperature=0.2)
         qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
         qa_tool = Tool(
             name="KnowledgeBaseQA",
             func=lambda query: qa_chain.run(query),
-            description="Use this to search for TVL, APY, or DeFi information.",
+            description="Search DeFi protocols for TVL, APY, risk levels, and token information. Returns data about Aave, Compound, Morpho and other protocols.",
         )
 
         tools = [qa_tool]
 
-        return create_react_agent(llm, tools=tools)
+        system_prompt = (
+            "You are a DeFi yield optimization assistant for Whizy Protocol. "
+            "You help users find the best yield opportunities based on their risk profile. \n"
+            "Available protocols: Aave (12.4% APY), Compound (4.8% APY), Morpho (6.2% APY). \n"
+            "The ProtocolSelector smart contract automatically chooses the best protocol using: \n"
+            "- 50% weight on APY (higher yields preferred) \n"
+            "- 30% weight on TVL (higher liquidity preferred) \n"
+            "- 20% weight on Risk Level (matches user's risk tolerance) \n\n"
+            "RebalancerDelegation contract handles automatic rebalancing when APY improvements >2% are detected. \n"
+            "Always provide actionable, accurate information based on the knowledge base."
+        )
 
-    async def process_query(self, query: str, thread_id: Optional[str] = None):
+        return create_react_agent(llm, tools=tools, state_modifier=system_prompt)
+
+    async def process_query(self, query: str, thread_id: Optional[str] = None, risk_level: Optional[str] = None):
+        """Process query with optional risk-based context"""
         await self.initialize()
+        
+        # Enhance query with risk-based context if provided
+        enhanced_query = query
+        if risk_level and self.risk_prompts:
+            risk_prompt = next((p for p in self.risk_prompts if p["risk"] == risk_level), None)
+            if risk_prompt:
+                enhanced_query = f"{risk_prompt['prompt']}\n\nUser query: {query}"
+        
         config = {"configurable": {"thread_id": thread_id or "Knowledge Agent API"}}
         return await asyncio.get_event_loop().run_in_executor(
             self.thread_pool,
             lambda: self.agent_executor.invoke(
-                {"messages": [HumanMessage(content=query)]}, config=config
+                {"messages": [HumanMessage(content=enhanced_query)]}, config=config
             )["messages"][-1].content,
         )
+
+    async def get_strategy_recommendation(self, risk_level: str):
+        """Get yield strategy recommendation based on risk level"""
+        risk_prompt = next((p for p in self.risk_prompts if p["risk"] == risk_level), None)
+        if not risk_prompt:
+            return {"error": f"Invalid risk level: {risk_level}"}
+        
+        # Query knowledge base with risk-specific prompt
+        query = f"""Based on current protocol data, recommend the optimal yield strategy.
+        Risk Profile: {risk_level.upper()}
+        Strategy: {risk_prompt['rebalancing_strategy']}
+        
+        Analyze the knowledge base and return a JSON response with:
+        1. recommended_protocols: List of suitable protocols
+        2. expected_apy_range: Expected APY range
+        3. risk_factors: Key risk considerations
+        4. rebalancing_threshold: Minimum APY improvement to trigger rebalance
+        
+        Return ONLY valid JSON, no additional text."""
+        
+        response = await self.process_query(query)
+        return response
 
 
 class RiskClassifierAgent:
@@ -97,26 +150,66 @@ class RiskClassifierAgent:
                 )
 
     def _sync_initialize_agent(self):
-        llm = ChatOpenAI(model="gpt-4o-mini-2024-07-18")
+        llm = ChatOpenAI(model="gpt-4o-mini-2024-07-18", temperature=0.1)
         memory = MemorySaver()
+
+        system_prompt = (
+            "You are an expert risk profile classifier for DeFi yield farming strategies in Whizy Protocol. "
+            "Your role is to analyze user responses and classify them into precise risk categories. \n\n"
+            
+            "## Risk Classification Framework:\n\n"
+            
+            "### LOW RISK (Conservative):\n"
+            "- Capital preservation is top priority\n"
+            "- Prefers stablecoins only\n"
+            "- Cannot tolerate more than 5% drawdown\n"
+            "- Seeks steady, predictable returns (2-8% APY)\n"
+            "- Short to medium investment horizon (months)\n"
+            "- Minimal DeFi experience\n"
+            "- High security concerns\n"
+            "Example: 'I want stable returns, no price volatility, I panic when I see any losses'\n\n"
+            
+            "### MEDIUM RISK (Balanced):\n"
+            "- Balance between growth and stability\n"
+            "- Open to major cryptocurrencies (BTC, ETH, SOL, BNB)\n"
+            "- Can tolerate 10-20% drawdown\n"
+            "- Seeks good returns (4-12% APY)\n"
+            "- Medium to long-term horizon (6 months - 2 years)\n"
+            "- Some DeFi experience\n"
+            "- Moderate security awareness\n"
+            "Example: 'I want good returns, can handle some volatility, invest in blue-chip crypto'\n\n"
+            
+            "### HIGH RISK (Aggressive):\n"
+            "- Maximum yield is priority\n"
+            "- Open to any asset type\n"
+            "- Can tolerate 30%+ drawdown\n"
+            "- Seeks highest returns (8-20%+ APY)\n"
+            "- Long-term horizon (1+ years)\n"
+            "- Experienced in DeFi\n"
+            "- Accepts smart contract risks\n"
+            "Example: 'Give me maximum yield, I understand risks, experienced trader'\n\n"
+            
+            "## Analysis Guidelines:\n"
+            "1. Look for keywords indicating risk tolerance: 'stable', 'conservative', 'safe' vs 'aggressive', 'maximum', 'highest'\n"
+            "2. Assess time horizon mentions: shorter = lower risk\n"
+            "3. Consider loss tolerance: specific percentages mentioned\n"
+            "4. Evaluate experience level: beginner = lower risk\n"
+            "5. Asset preference: stablecoins only = low, any asset = high\n\n"
+            
+            "## Output Format:\n"
+            "You MUST respond with ONLY valid JSON in this EXACT format:\n"
+            '{"risk": "low"}  OR  {"risk": "medium"}  OR  {"risk": "high"}\n\n'
+            
+            "Do NOT include explanations, reasoning, or any text outside the JSON.\n"
+            "Do NOT use markdown code blocks.\n"
+            "Return ONLY the raw JSON object."
+        )
 
         return create_react_agent(
             llm,
             tools=[],
             checkpointer=memory,
-            state_modifier=(
-                "You are a risk profile classifier that evaluates users based on their responses to investment-related questions. "
-                "You MUST ALWAYS respond in valid JSON format with a single 'risk' key with value being either 'low', 'medium', or 'high'. "
-                "When analyzing responses, consider factors like: age, investment experience, financial goals, time horizon, and risk tolerance. "
-                "Base your classification on standard risk assessment principles. "
-                "Sample questions you should expect and factor into your analysis: "
-                "1. How do you feel about potential losses in staking investments? "
-                "2. How long are you willing to lock up your staked assets? "
-                "3. How do you assess smart contract security before staking? "
-                "4. What is your approach to diversification in staking? "
-                "5. How do you react to market fluctuations affecting your staked assets? "
-                'Regardless of the input format, ALWAYS respond with: {"risk": "risk_level"} where risk_level is low, medium, or high'
-            ),
+            state_modifier=system_prompt
         )
 
     async def process_query(self, query: str, user_address: str):

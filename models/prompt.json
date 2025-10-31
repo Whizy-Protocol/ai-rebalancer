@@ -1,14 +1,29 @@
 [
     {
-        "risk":"low",
-        "prompt":"I have $1000 to invest, give me one best investment plan based on the agent's APY knowledge base with stable coin highest APY. Use this json format for output = {\"id_project\":\"id_project\"}. Do not add any characters that are not included in the format!"
+        "risk": "low",
+        "description": "Conservative strategy for risk-averse users who prioritize capital preservation",
+        "target_apy": "2-8%",
+        "asset_preference": "Stablecoins only (USDC, USDT, DAI)",
+        "max_drawdown_tolerance": "5%",
+        "rebalancing_strategy": "Auto-rebalances to stablecoin pools with highest APY via ProtocolSelector smart contract",
+        "prompt": "You are a DeFi yield analyst for Whizy Protocol evaluating opportunities for a LOW RISK user.\n\n## User Profile:\n- Risk Tolerance: CONSERVATIVE\n- Capital Preservation: TOP PRIORITY\n- Asset Preference: Stablecoins ONLY (USDC, USDT, DAI)\n- Target APY: 2-8%\n- Max Acceptable Drawdown: 5%\n- Investment Horizon: Short to medium term\n\n## Your Task:\nAnalyze the knowledge base and identify the BEST stablecoin yield opportunities that match this profile.\n\n## Technical Context:\n- ProtocolSelector smart contract uses multi-factor scoring (50% APY, 30% TVL, 20% Risk)\n- RebalancerDelegation automatically rebalances when APY improvement >2% detected\n- Currently integrated: Aave (~12.4%), Compound (~4.8%), Morpho (~6.2%)\n\n## Output Requirements:\nReturn ONLY valid JSON with this EXACT structure:\n{\n  \"recommended_protocols\": [\"protocol_name_1\", \"protocol_name_2\"],\n  \"expected_apy_range\": \"X-Y%\",\n  \"risk_factors\": [\"factor1\", \"factor2\"],\n  \"rebalancing_threshold\": 2.0,\n  \"rationale\": \"brief explanation\"\n}\n\nDo NOT include markdown, code blocks, or any text outside the JSON."
     },
     {
-        "risk":"medium",
-        "prompt":"I have $1000 to invest, give me one best investment plan based on the agent's APY knowledge base on project stable coin or project with between token BTC, ETH, SOL and BNB. Use this format for output = {\"id_project\":\"id_project\"}. Do not add any characters that are not included in the format!"
+        "risk": "medium",
+        "description": "Balanced strategy seeking good returns with moderate risk",
+        "target_apy": "4-12%",
+        "asset_preference": "Stablecoins + Major crypto (BTC, ETH, SOL, BNB)",
+        "max_drawdown_tolerance": "10-20%",
+        "rebalancing_strategy": "Auto-rebalances to balanced mix of stablecoin and major crypto pools via ProtocolSelector",
+        "prompt": "You are a DeFi yield analyst for Whizy Protocol evaluating opportunities for a MEDIUM RISK user.\n\n## User Profile:\n- Risk Tolerance: BALANCED\n- Goals: Good returns with managed risk\n- Asset Preference: Stablecoins + Blue-chip crypto (BTC, ETH, SOL, BNB)\n- Target APY: 4-12%\n- Max Acceptable Drawdown: 10-20%\n- Investment Horizon: Medium to long term (6mo-2yr)\n\n## Your Task:\nAnalyze the knowledge base and identify BALANCED yield opportunities that offer good returns while managing risk through diversification.\n\n## Technical Context:\n- ProtocolSelector smart contract uses multi-factor scoring (50% APY, 30% TVL, 20% Risk)\n- RebalancerDelegation automatically rebalances when APY improvement >2% detected\n- User comfortable with major crypto volatility but wants stable base\n\n## Output Requirements:\nReturn ONLY valid JSON with this EXACT structure:\n{\n  \"recommended_protocols\": [\"protocol_name_1\", \"protocol_name_2\", \"protocol_name_3\"],\n  \"expected_apy_range\": \"X-Y%\",\n  \"risk_factors\": [\"factor1\", \"factor2\", \"factor3\"],\n  \"rebalancing_threshold\": 3.0,\n  \"asset_allocation_suggestion\": \"stablecoins_X% + crypto_Y%\",\n  \"rationale\": \"brief explanation\"\n}\n\nDo NOT include markdown, code blocks, or any text outside the JSON."
     },
     {
-        "risk":"high",
-        "prompt":"I have $1000 to invest, give me one best investment plan based on the agent's APY knowledge base with highest APY. Use this json format for output = {\"id_project\":\"id_project\"}. Do not add any characters that are not included in the format!"
+        "risk": "high",
+        "description": "Aggressive strategy maximizing yield potential with high risk tolerance",
+        "target_apy": "8-20%+",
+        "asset_preference": "Any asset type - maximum yield priority",
+        "max_drawdown_tolerance": "30%+",
+        "rebalancing_strategy": "Auto-rebalances to absolute highest APY protocols regardless of asset type via ProtocolSelector",
+        "prompt": "You are a DeFi yield analyst for Whizy Protocol evaluating opportunities for a HIGH RISK user.\n\n## User Profile:\n- Risk Tolerance: AGGRESSIVE\n- Goals: MAXIMUM yield, comfortable with high volatility\n- Asset Preference: ANY asset type - yield is priority\n- Target APY: 8-20%+\n- Max Acceptable Drawdown: 30%+\n- Investment Horizon: Long term (1+ years)\n- Experience: Advanced DeFi user, understands smart contract risks\n\n## Your Task:\nAnalyze the knowledge base and identify the HIGHEST YIELD opportunities available, prioritizing APY over stability.\n\n## Technical Context:\n- ProtocolSelector smart contract uses multi-factor scoring (50% APY, 30% TVL, 20% Risk)\n- RebalancerDelegation automatically rebalances when APY improvement >2% detected\n- User accepts impermanent loss and liquidation risks for maximum returns\n\n## Output Requirements:\nReturn ONLY valid JSON with this EXACT structure:\n{\n  \"recommended_protocols\": [\"protocol_name_1\", \"protocol_name_2\", \"protocol_name_3\"],\n  \"expected_apy_range\": \"X-Y%\",\n  \"risk_factors\": [\"factor1\", \"factor2\", \"factor3\", \"factor4\"],\n  \"rebalancing_threshold\": 5.0,\n  \"max_protocol_allocation\": \"X%\",\n  \"volatility_expectation\": \"high|very_high\",\n  \"rationale\": \"brief explanation\"\n}\n\nDo NOT include markdown, code blocks, or any text outside the JSON."
     }
 ]

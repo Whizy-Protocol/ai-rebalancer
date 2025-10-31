@@ -1,10 +1,9 @@
-from checker import *
-
 import os
 import orjson
 from web3 import Web3
 from eth_account import Account
-from utils import get_env_variable
+from src.checker import *
+from src.utils import get_env_variable
 
 
 class AgentWalletSync:

@@ -1,0 +1,960 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_minApyThreshold",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "_maxRiskTolerance",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "type": "error",
+    "name": "AlreadyInitialized"
+  },
+  {
+    "inputs": [],
+    "type": "error",
+    "name": "DepositFailed"
+  },
+  {
+    "inputs": [],
+    "type": "error",
+    "name": "InsufficientBalance"
+  },
+  {
+    "inputs": [],
+    "type": "error",
+    "name": "InvalidProtocolType"
+  },
+  {
+    "inputs": [],
+    "type": "error",
+    "name": "IsPaused"
+  },
+  {
+    "inputs": [],
+    "type": "error",
+    "name": "NoProtocolsAvailable"
+  },
+  {
+    "inputs": [],
+    "type": "error",
+    "name": "NotAuthorized"
+  },
+  {
+    "inputs": [],
+    "type": "error",
+    "name": "NotOwner"
+  },
+  {
+    "inputs": [],
+    "type": "error",
+    "name": "ProtocolNotFound"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "type": "error",
+    "name": "SafeERC20FailedOperation"
+  },
+  {
+    "inputs": [],
+    "type": "error",
+    "name": "WithdrawFailed"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "internalType": "address",
+        "name": "protocol",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "internalType": "bool",
+        "name": "success",
+        "type": "bool",
+        "indexed": false
+      }
+    ],
+    "type": "event",
+    "name": "AutoDepositExecuted",
+    "anonymous": false
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "internalType": "address",
+        "name": "protocol",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "internalType": "bool",
+        "name": "success",
+        "type": "bool",
+        "indexed": false
+      }
+    ],
+    "type": "event",
+    "name": "AutoWithdrawExecuted",
+    "anonymous": false
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true
+      }
+    ],
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "anonymous": false
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address",
+        "indexed": false
+      }
+    ],
+    "type": "event",
+    "name": "Paused",
+    "anonymous": false
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "protocolType",
+        "type": "uint8",
+        "indexed": true
+      },
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string",
+        "indexed": false
+      },
+      {
+        "internalType": "uint8",
+        "name": "riskLevel",
+        "type": "uint8",
+        "indexed": false
+      }
+    ],
+    "type": "event",
+    "name": "ProtocolRegistered",
+    "anonymous": false
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "internalType": "uint256",
+        "name": "newApy",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "internalType": "uint256",
+        "name": "newTvl",
+        "type": "uint256",
+        "indexed": false
+      }
+    ],
+    "type": "event",
+    "name": "ProtocolUpdated",
+    "anonymous": false
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address",
+        "indexed": false
+      }
+    ],
+    "type": "event",
+    "name": "Unpaused",
+    "anonymous": false
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "PROTOCOL_AAVE",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "PROTOCOL_COMPOUND",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "PROTOCOL_MORPHO",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "assertNotPaused"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "assertOwner"
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "assertOwner"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "autoDeposit",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "success",
+        "type": "bool"
+      },
+      {
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "autoSelectionEnabled",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "autoWithdraw",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "amountReceived",
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "availableProtocols",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "protocolType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "currentApy",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tvl",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "riskLevel",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "getAllProtocols",
+    "outputs": [
+      {
+        "internalType": "struct ProtocolSelector.ProtocolInfo[]",
+        "name": "protocols",
+        "type": "tuple[]",
+        "components": [
+          {
+            "internalType": "uint8",
+            "name": "protocolType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "protocolAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "currentApy",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tvl",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "riskLevel",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "getAvailableProtocols",
+    "outputs": [
+      {
+        "internalType": "struct ProtocolSelector.ProtocolInfo[]",
+        "name": "protocols",
+        "type": "tuple[]",
+        "components": [
+          {
+            "internalType": "uint8",
+            "name": "protocolType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "protocolAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "currentApy",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tvl",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "riskLevel",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "getCurrentBestApy",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "bestApy",
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "protocolType",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "getProtocolByType",
+    "outputs": [
+      {
+        "internalType": "struct ProtocolSelector.ProtocolInfo",
+        "name": "protocol",
+        "type": "tuple",
+        "components": [
+          {
+            "internalType": "uint8",
+            "name": "protocolType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "protocolAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "currentApy",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tvl",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "riskLevel",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "getTotalBalance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "totalBalance",
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "getUserDeposit",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "deposit",
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "initialOwner",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "initializeOwner"
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "isInitialized",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "isOwner",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "maxRiskTolerance",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "minApyThreshold",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "pause"
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "paused",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "protocolTypeToAddress",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "protocolType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint8",
+        "name": "riskLevel",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "registerProtocol"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IERC20",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "selectBestProtocol",
+    "outputs": [
+      {
+        "internalType": "struct ProtocolSelector.ProtocolInfo",
+        "name": "bestProtocol",
+        "type": "tuple",
+        "components": [
+          {
+            "internalType": "uint8",
+            "name": "protocolType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "protocolAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "currentApy",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tvl",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "riskLevel",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "enabled",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "setAutoSelectionEnabled"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "newTolerance",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "setMaxRiskTolerance"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "newThreshold",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "setMinApyThreshold"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "setProtocolActive"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "transferOwnership"
+  },
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "unpause"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "updateProtocol"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "protocolAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "updateProtocolInfo"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "userDeposits",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ]
+  }
+]

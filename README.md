@@ -1,6 +1,6 @@
 # Whizy Protocol - AI Rebalancer Backend
 
-Backend service for Whizy Protocol that provides AI-powered risk assessment, knowledge base queries, and automated yield optimization through delegated rebalancing on the Hedera network.
+Backend service for Whizy Protocol that provides AI-powered risk assessment, knowledge base queries, and automated market vault yield optimization on the Hedera network.
 
 ## Overview
 
@@ -8,7 +8,8 @@ The Whizy Rebalancer is a FastAPI-based backend that:
 - 🤖 Assesses user risk profiles using OpenAI GPT-4o-mini
 - 📚 Provides protocol knowledge and AI-powered recommendations using RAG (Retrieval-Augmented Generation)
 - 💼 Manages non-custodial user wallets (users control their own keys)
-- 🔄 Executes automated rebalancing via operator delegation
+- 🔄 Executes automated market vault rebalancing to optimal yield protocols
+- 📊 Optimizes yields for all users betting in active markets
 - ⛓️ Integrates with smart contracts on Hedera network
 - 🧪 Comprehensive test suite with unit and integration tests
 
@@ -44,38 +45,46 @@ The Whizy Rebalancer is a FastAPI-based backend that:
   - Query user configuration from delegation contract
   - Get user USDC balance
 
-#### 3. Automated Rebalancing (`src/rules.py`)
+#### 3. Automated Market Vault Rebalancing (`src/rules.py`)
 - **AgentWalletSync**: Synchronous wallet operations for scheduled tasks
-- **Operator-based rebalancing**: Backend calls `rebalance()` on delegation contract
-- Periodic runner checks all users and rebalances based on risk profiles
+- **Operator-based rebalancing**: Backend calls `rebalanceMarketVault(marketId)` on prediction market contract
+- Periodic runner checks all active markets and rebalances their vaults to optimal yield protocols
+- Benefits ALL users with bets in those markets automatically
+- **Manual rebalancing**: Users can also trigger rebalancing via frontend for immediate optimization
 
 #### 4. Smart Contract Integration
-- **RebalancerDelegation**: Non-custodial delegation for auto-rebalancing
+- **WhizyPredictionMarket**: Market creation and vault rebalancing
+- **MarketVault**: Individual market vaults (ERC4626) that hold bet funds and generate yield
 - **ProtocolSelector**: Automatic best-yield protocol selection
-- **USDC Token**: Stablecoin for deposits and operations
+- **RebalancerDelegation**: Optional user delegation for separate deposits (not used for market funds)
+- **USDC Token**: Stablecoin for bets and operations
 
-### Non-Custodial Architecture
+### Market Vault Rebalancing Architecture
 
 ```
 User Wallet (MetaMask/WalletConnect)
-    ↓ (Frontend) depositAndEnable()
-RebalancerDelegation Contract
-    ↓ holds user funds
-    ↓ autoDeposit()
+    ↓ placeBet() on market
+WhizyPredictionMarket Contract
+    ↓ creates/uses MarketVault (ERC4626)
+MarketVault Contract
+    ↓ auto-deposits to best protocol
 ProtocolSelector Contract
-    ↓ selects best protocol
+    ↓ selects optimal protocol
 Yield Protocols (Aave, Morpho, Compound)
-    ↓ generates yield
-    ↑ (Backend) operator.rebalance(user)
-Backend Operator Wallet
+    ↓ generates yield for ALL market participants
+    ↑ (Backend OR User) rebalanceMarketVault(marketId)
+Backend Operator Wallet / User Wallet
 ```
 
 **Key Points:**
-- Users control their own wallets (MetaMask, WalletConnect, etc.)
-- All user transactions signed on frontend
-- Backend only reads on-chain data and executes rebalancing
-- Backend operator can only rebalance, not withdraw user funds
-- Users can withdraw anytime via frontend
+- Users place bets on markets, funds go to market vault
+- Market vaults automatically earn yield on all deposited funds
+- **Automated rebalancing**: Backend operator rebalances market vaults hourly
+- **Manual rebalancing**: Any user can trigger rebalancing via frontend
+- Operator can only rebalance vaults, not withdraw funds
+- Yield benefits ALL users with positions in that market
+- Winners claim: principal + winnings + their share of yield
+- Losers claim: their share of yield (lose principal to winners)
 - Fully transparent on-chain operations
 
 ## Installation
@@ -107,16 +116,18 @@ DEFILLAMA_API=https://yields.llama.fi/pools
 # Hedera Network
 RPC_URL=https://testnet.hashio.io/api
 
-# Database URL
-DATABASE_URL=your_database_url
+# Database URL (for tracking active markets)
+DATABASE_URL=postgresql://user:pass@localhost:5432/your_db
 
 # Smart Contracts
-PROTOCOL_SELECTOR_ADDRESS=0x0371aB2d90A436C8E5c5B6aF8835F46A6Ce884Ba
-REBALANCER_DELEGATION_ADDRESS=0x6D5f91cA52bdD5d3DAAb52D91fBfd7e7D253d64A
-USDC_ADDRESS=0x8bc6E87bE188B7964E48f37d7A2c144416a995eE
+PROTOCOL_SELECTOR_ADDRESS=0x097c8868c58194125025804Df54ecFc3a9a73985
+MARKET_ADDRESS=0x0f881762d0fd0E226fe00f2CE5801980EB046902
+ACCESS_CONTROL_ADDRESS=0xbac99b7FF3624d6Add9884cE51a993ceA1f99C9a
+REBALANCER_DELEGATION_ADDRESS=0xA5d395776429C06C01B5983B32e36Bf578c655a9
+USDC_ADDRESS=0x5f2faF6b0B0F79fbD1B70e0ff244Da92C614e44a
 
-# Operator Wallet (for rebalancing)
-OPERATOR_PRIVATE_KEY=
+# Operator Wallet (for automated rebalancing)
+OPERATOR_PRIVATE_KEY=your_operator_private_key
 ```
 
 ## API Endpoints
@@ -205,36 +216,40 @@ Get user's delegation configuration.
 **All delegation transactions must be signed on the frontend using the user's wallet (MetaMask, WalletConnect, etc.)**
 
 **Contract Addresses:**
-- RebalancerDelegation: `0x6D5f91cA52bdD5d3DAAb52D91fBfd7e7D253d64A`
-- USDC: `0x8bc6E87bE188B7964E48f37d7A2c144416a995eE`
+- WhizyPredictionMarket: `0x0f881762d0fd0E226fe00f2CE5801980EB046902`
+- USDC: `0x5f2faF6b0B0F79fbD1B70e0ff244Da92C614e44a`
 
-**Available Functions (Frontend calls these directly):**
+**Market Betting (Frontend):**
 
 ```javascript
-// 1. Deposit and enable auto-rebalancing
-await rebalancerDelegation.depositAndEnable(amount, riskProfile);
-// Risk profiles: 1=low, 2=medium, 3=high
+// 1. Place a bet on a market
+await predictionMarket.placeBet(marketId, isYes, amount);
+// isYes: true for YES, false for NO
+// Funds automatically go to market vault and earn yield
 
-// 2. Withdraw funds
-await rebalancerDelegation.withdraw(amount);
-// amount=0 for full withdrawal
+// 2. Manually trigger market vault rebalancing
+await predictionMarket.rebalanceMarketVault(marketId);
+// Any user can call this to optimize vault yields immediately
 
-// 3. Enable auto-rebalancing
-await rebalancerDelegation.enableAutoRebalance(riskProfile);
+// 3. Claim winnings after market resolves
+await predictionMarket.claimWinnings(marketId);
+// Winners get: principal + winnings + yield share
+// Losers get: yield share only
 
-// 4. Disable auto-rebalancing (funds remain deposited)
-await rebalancerDelegation.disableAutoRebalance();
+// 4. Check market info (read-only)
+const info = await predictionMarket.getMarketInfo(marketId);
+// Returns: market data, total assets, current yield, yield withdrawn
 
-// 5. Check configuration (read-only)
-const config = await rebalancerDelegation.userConfigs(userAddress);
-// Returns: [enabled, riskProfile, depositedAmount]
+// 5. Check potential payout (read-only)
+const payout = await predictionMarket.getPotentialPayout(marketId, userAddress);
+// Returns: yesPayoutIfWin, noPayoutIfWin, currentYield
 ```
 
-**Backend only provides:**
+**Backend provides:**
 - Risk assessment via AI
 - Protocol knowledge queries
-- User balance/config queries
-- Automated rebalancing (operator-only)
+- User balance queries
+- Automated market vault rebalancing (runs hourly)
 
 ### Health Check
 
@@ -257,9 +272,9 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 ```
 
-### Scheduled Rebalancing
+### Scheduled Market Vault Rebalancing
 
-The automated rebalancer runs periodically via `scheduler.py`:
+The automated rebalancer runs hourly via `scheduler.py`:
 
 ```bash
 # Start scheduler (runs in background)
@@ -267,12 +282,20 @@ python scheduler.py
 ```
 
 **How it works:**
-1. Scheduler calls `runner()` from `src/rules.py`
-2. Loads all users from `data/wallet.json`
-3. Checks each user's risk profile and deposited funds
-4. Operator wallet calls `rebalance(user)` on delegation contract
-5. Delegation contract withdraws from current protocol and deposits to best protocol
-6. ProtocolSelector automatically selects optimal protocol based on APY
+1. Scheduler calls `runner()` from `src/rules.py` every hour
+2. Queries database for all active markets (not resolved, end time in future)
+3. For each active market, operator wallet calls `rebalanceMarketVault(marketId)` on prediction market contract
+4. Market vault withdraws all funds from current yield protocol
+5. Market vault deposits all funds to optimal yield protocol (via ProtocolSelector)
+6. All users with bets in that market benefit from better yields
+
+**Manual Rebalancing:**
+Users can also trigger rebalancing from the frontend anytime:
+```javascript
+// Frontend calls this directly
+await predictionMarket.rebalanceMarketVault(marketId);
+```
+This immediately optimizes the market vault without waiting for the hourly scheduler.
 
 ## Data Storage
 
@@ -305,27 +328,40 @@ Listen to delegation contract events:
 
 ## Smart Contract Integration
 
-### Contracts Used
+### Smart Contracts Used
 
-1. **RebalancerDelegation** (`0x6D5f91cA52bdD5d3DAAb52D91fBfd7e7D253d64A`)
-   - Non-custodial delegation contract
-   - Users deposit and enable auto-rebalancing
-   - Operators rebalance on behalf of users
+1. **WhizyPredictionMarket** (`0x0f881762d0fd0E226fe00f2CE5801980EB046902`)
+   - Market creation and resolution
+   - Bet placement and claiming
+   - Market vault rebalancing
+   - Operator management
 
-2. **ProtocolSelector** (`0x0371aB2d90A436C8E5c5B6aF8835F46A6Ce884Ba`)
+2. **MarketVault** (Created per market, ERC4626)
+   - Holds all funds for a specific market
+   - Auto-deposits to yield protocols
+   - Tracks shares for each position
+   - Generates yield for all participants
+
+3. **ProtocolSelector** (`0x097c8868c58194125025804Df54ecFc3a9a73985`)
    - Automatic protocol selection
    - Routes funds to best-yielding protocol
    - Handles deposits/withdrawals across protocols
 
-3. **USDC Token** (`0x8bc6E87bE188B7964E48f37d7A2c144416a995eE`)
-   - Stablecoin for deposits
+4. **RebalancerDelegation** (`0xA5d395776429C06C01B5983B32e36Bf578c655a9`) (Optional)
+   - For separate user deposits outside of markets
+   - Not used for market betting
+
+5. **USDC Token** (`0x5f2faF6b0B0F79fbD1B70e0ff244Da92C614e44a`)
+   - Stablecoin for bets
    - ERC20 standard
 
 ### ABI Files
 
 Required ABI files in `abi/` directory:
-- `RebalancerDelegation.json`
+- `WhizyPredictionMarket.json`
+- `MarketVault.json`
 - `ProtocolSelector.json`
+- `RebalancerDelegation.json` (optional)
 - `erc20.json`
 
 ## User Flow
@@ -337,37 +373,49 @@ User connects wallet (MetaMask/WalletConnect)
     → Frontend checks user has USDC
 ```
 
-### 2. Risk Assessment
+### 2. Risk Assessment (Optional - for AI recommendations)
 ```
 User answers questions
     → POST /generate-risk-profile
     → Returns risk level (low/medium/high)
+    → GET /get-strategy-recommendation
+    → Returns optimal strategy
 ```
 
-### 3. Deposit & Enable (Frontend Transaction)
+### 3. Place Bet (Frontend Transaction)
 ```
-User → Frontend calls depositAndEnable() on delegation contract
+User selects market and position (YES/NO)
+    → Frontend calls placeBet(marketId, isYes, amount)
     → User signs transaction in wallet
-    → USDC deposited to RebalancerDelegation
-    → Auto-rebalancing enabled with risk profile
-    → Funds deployed to best protocol
+    → USDC transferred to prediction market contract
+    → Funds deposited to MarketVault
+    → MarketVault auto-deploys funds to best yield protocol
+    → User's position recorded with shares
 ```
 
-### 4. Automated Rebalancing
+### 4. Automated Yield Optimization
 ```
-Scheduler runs periodically
-    → Checks all users with auto-rebalance enabled
-    → Operator calls rebalance(user) for each user
-    → Funds moved to optimal protocol
-    → User earns best yields automatically
+Scheduler runs hourly
+    → Queries all active markets from database
+    → For each market: operator calls rebalanceMarketVault(marketId)
+    → Market vault moves funds to optimal protocol
+    → All users in that market earn better yields
+
+OR
+
+User manually triggers rebalancing
+    → Frontend calls rebalanceMarketVault(marketId)
+    → Immediate optimization without waiting
 ```
 
-### 5. Withdrawal (Frontend Transaction)
+### 5. Claim Winnings (Frontend Transaction)
 ```
-User → Backend GET /action/get-user-config (check balance)
-    → Frontend calls withdraw() on delegation contract
+Market resolves → User clicks claim
+    → Backend GET /getPotentialPayout (check winnings + yield)
+    → Frontend calls claimWinnings(marketId)
     → User signs transaction in wallet
-    → Funds returned to user wallet
+    → Winners receive: principal + winnings + yield share
+    → Losers receive: yield share only
 ```
 
 ## Security Considerations

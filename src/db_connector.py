@@ -31,6 +31,35 @@ class IndexerDB:
         if self._conn and not self._conn.closed:
             self._conn.close()
 
+    def get_active_markets(self) -> list[dict[str, any]]:
+        """
+        Get all active markets that can be rebalanced.
+
+        Returns:
+            List of dicts with keys: market_id, question, end_time, vault_address
+        """
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT DISTINCT
+                        mc.market_id,
+                        mc.question,
+                        mc.end_time,
+                        mc.vault_address
+                    FROM market_createds mc
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM market_resolveds mr
+                        WHERE mr.market_id = mc.market_id
+                    )
+                    AND mc.end_time > EXTRACT(EPOCH FROM NOW())
+                    ORDER BY mc.market_id
+                """)
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"Error fetching active markets: {e}")
+            return []
+
     def get_active_auto_rebalance_users(self) -> list[dict[str, any]]:
         """
         Get all users who have auto-rebalance enabled.

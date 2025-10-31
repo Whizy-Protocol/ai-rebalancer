@@ -2,7 +2,6 @@ import orjson
 from eth_account import Account
 from web3 import Web3
 
-from src.checker import get_data_staked, get_risk
 from src.utils import get_env_variable
 
 
@@ -11,8 +10,8 @@ class AgentWalletSync:
         self.rpc_url = get_env_variable("RPC_URL", "https://testnet.hashio.io/api")
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
         self.chain_id = 296
-        self.rebalancer_delegation = get_env_variable(
-            "REBALANCER_DELEGATION_ADDRESS", "0x6D5f91cA52bdD5d3DAAb52D91fBfd7e7D253d64A"
+        self.market_address = get_env_variable(
+            "MARKET_ADDRESS", "0x0f881762d0fd0E226fe00f2CE5801980EB046902"
         )
         self.operator_private_key = get_env_variable("OPERATOR_PRIVATE_KEY", "")
 
@@ -22,37 +21,36 @@ class AgentWalletSync:
             raise ValueError("OPERATOR_PRIVATE_KEY not set in .env")
         return Account.from_key(self.operator_private_key)
 
-    def rebalance_user(self, user_address):
+    def rebalance_market_vault(self, market_id):
         """
-        Operator rebalances user's funds via RebalancerDelegation contract
-        user_address is the actual wallet address (e.g., from MetaMask)
+        Operator rebalances a market vault to optimal yield protocol
+        market_id is the numeric ID of the prediction market
         """
         operator_account = self._get_operator_account()
-        delegation_abi = self._read_abi("./abi/RebalancerDelegation.json")
+        market_abi = self._read_abi("./abi/WhizyPredictionMarket.json")
 
         return self._send_contract_tx(
             operator_account,
-            self.rebalancer_delegation,
-            delegation_abi,
-            "rebalance",
-            user_address,
+            self.market_address,
+            market_abi,
+            "rebalanceMarketVault",
+            market_id,
         )
 
-    def get_users_with_auto_rebalance(self):
+    def get_active_markets(self):
         """
-        Get all users who have auto-rebalance enabled from indexer database.
+        Get all active markets that need rebalancing from indexer database.
+        Returns list of market IDs with Active status.
         """
         try:
             from src.db_connector import get_db
 
             db = get_db()
 
-            db.refresh_materialized_view()
-
-            users = db.get_active_auto_rebalance_users()
-            return [user["address"] for user in users]
+            markets = db.get_active_markets()
+            return [market["market_id"] for market in markets]
         except Exception as e:
-            print(f"Error fetching users from database: {e}")
+            print(f"Error fetching markets from database: {e}")
             print("Make sure DATABASE_URL is set in .env and indexer is running")
             return []
 
@@ -84,51 +82,42 @@ class AgentWalletSync:
             return orjson.loads(file.read())
 
 
-def handle_user(user_address: str):
-    user_risk = get_risk(user_address)
-    user_staked = get_data_staked(user_address)
-
-    match user_risk:
-        case "low":
-            handle_low_risk(user_address, user_staked)
-        case "medium":
-            handle_high_risk(user_address, user_staked)
-        case "high":
-            handle_high_risk(user_address, user_staked)
-
-
-def handle_low_risk(user_address, user_staked):
-    """Handle low risk users - rebalance via delegation contract"""
+def handle_market(market_id: int):
+    """
+    Rebalance a market's vault to optimal yield protocol
+    """
     try:
         agent = AgentWalletSync()
-        agent.rebalance_user(user_address)
-        print(f"Successfully rebalanced low-risk user: {user_address}")
+        tx_hash = agent.rebalance_market_vault(market_id)
+        print(f"Successfully rebalanced market {market_id}: {tx_hash}")
+        return tx_hash
     except Exception as e:
-        print(f"Error rebalancing user {user_address}: {e}")
-
-
-def handle_high_risk(user_address, user_staked):
-    """Handle high/medium risk users - rebalance via delegation contract"""
-    try:
-        agent = AgentWalletSync()
-        agent.rebalance_user(user_address)
-        print(f"Successfully rebalanced high-risk user: {user_address}")
-    except Exception as e:
-        print(f"Error rebalancing user {user_address}: {e}")
+        print(f"Error rebalancing market {market_id}: {e}")
+        return None
 
 
 def runner():
     """
-    Runner for automated rebalancing.
-    Note: This requires a database or event listening to track user addresses.
-    Currently returns early as no user tracking is implemented.
+    Runner for automated market vault rebalancing.
+    Rebalances all active markets to optimal yield protocols.
     """
+    print("Starting market vault rebalancing...")
     agent = AgentWalletSync()
-    user_addresses = agent.get_users_with_auto_rebalance()
+    market_ids = agent.get_active_markets()
 
-    if not user_addresses:
-        print("No users with auto-rebalance enabled (tracking not implemented yet)")
+    if not market_ids:
+        print("No active markets found to rebalance")
         return
 
-    for address in user_addresses:
-        handle_user(address)
+    print(f"Found {len(market_ids)} active markets to rebalance")
+    success_count = 0
+
+    for market_id in market_ids:
+        print(f"Rebalancing market {market_id}...")
+        tx_hash = handle_market(market_id)
+        if tx_hash:
+            success_count += 1
+
+    print(
+        f"Rebalancing complete: {success_count}/{len(market_ids)} markets rebalanced successfully"
+    )

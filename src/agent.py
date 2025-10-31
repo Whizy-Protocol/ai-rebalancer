@@ -8,10 +8,9 @@ from fastapi import HTTPException
 from langchain.chains import RetrievalQA
 from langchain.docstore.document import Document
 from langchain.tools import Tool
-from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.messages import HumanMessage
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 

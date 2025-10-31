@@ -107,6 +107,9 @@ DEFILLAMA_API=https://yields.llama.fi/pools
 # Hedera Network
 RPC_URL=https://testnet.hashio.io/api
 
+# Database URL
+DATABASE_URL=your_database_url
+
 # Smart Contracts
 PROTOCOL_SELECTOR_ADDRESS=0x0371aB2d90A436C8E5c5B6aF8835F46A6Ce884Ba
 REBALANCER_DELEGATION_ADDRESS=0x6D5f91cA52bdD5d3DAAb52D91fBfd7e7D253d64A

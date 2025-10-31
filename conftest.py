@@ -1,6 +1,7 @@
 """
 Pytest configuration file to load environment variables from .env file.
 """
+
 from dotenv import load_dotenv
 
 

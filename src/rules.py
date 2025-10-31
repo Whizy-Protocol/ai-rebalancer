@@ -40,11 +40,21 @@ class AgentWalletSync:
 
     def get_users_with_auto_rebalance(self):
         """
-        Get all users who have auto-rebalance enabled from the delegation contract
-        This queries events or iterates through known users
+        Get all users who have auto-rebalance enabled from indexer database.
         """
-        # TODO: Implement event listening or maintain a database of users
-        return []
+        try:
+            from src.db_connector import get_db
+
+            db = get_db()
+
+            db.refresh_materialized_view()
+
+            users = db.get_active_auto_rebalance_users()
+            return [user["address"] for user in users]
+        except Exception as e:
+            print(f"Error fetching users from database: {e}")
+            print("Make sure DATABASE_URL is set in .env and indexer is running")
+            return []
 
     def _send_contract_tx(self, account, contract_address, abi, method_name, *args):
         """Helper method to send contract transactions"""
